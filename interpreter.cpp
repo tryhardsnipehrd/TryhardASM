@@ -496,7 +496,27 @@ int main(int argc, char * argv[]) {
 		fileVector.push_back(line);
 	}
 	
-	
+	/*
+	Do an initial pass-through of the file, in order to get all the labels
+	That is ALL we are doing here, ignoring the rest of them
+	*/
+	for (int i=0;i<fileVector.size();i++){
+		lineCode = split(fileVector[i], " ");
+		if (parseInstruction(lineCode[0]) == LBL) {
+			/*
+			LBL Command
+			Usage: LBL <Label name>
+			Creates a LaBeL with the name of <Label name>, allowing one to JMP, BNE, and BEQ to that label
+			*/
+			if (lineCode.size() != 2) {
+				std::cout << "LBL got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+				return -1;
+			} else {
+				Labels[lineCode[1]] = 1;
+			}
+			
+		}
+	}
 	
 	for (int i=0;i<fileVector.size();i++){
 		lineCode = split(fileVector[i], " ");
@@ -688,20 +708,7 @@ int main(int argc, char * argv[]) {
 				
 			// Control Flow Instructions
 			case comment:
-				continue;			
-			/*
-			LBL Command
-			Usage: LBL <Label name>
-			Creates a LaBeL with the name of <Label name>, allowing one to JMP, BNE, and BEQ to that label
-			*/
-			case LBL:
-				if (lineCode.size() != 2) {
-					std::cout << "LBL got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
-					return -1;
-				} else {
-					Labels[lineCode[1]] = 1;
-				}
-				break;
+				continue;
 			/*
 			JMP Command
 			Usage: JMP <Label Name>
