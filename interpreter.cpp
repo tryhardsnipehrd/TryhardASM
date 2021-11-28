@@ -15,12 +15,12 @@ A
 B
 C
 
-Technically a 4th register, really just a flag
+Memory/RAM --- 	a variable amount of space for variables, defined during runtime, before code is ran
+Defaults to 1K slots as of now, will be variable later
+
+Technically a 7th register, really just a flag
 CHK --- Holds the value of the Comparison instructions, allows one to use it if they really want
 
-Kind of a 5th, but user can't interact with it at all
-Stack --- Holds what line numbers the JSR commands went from, allowing one to go back to it in sequential order if needed.
-		  Pushes the number onto the stack, the latest number gets pulled when it is needed.
 
 Math Instructions
 AD* -- ADd value to *, can be register or int
@@ -35,6 +35,8 @@ IFT -- IF the comparison instruction last used was True, run the next line. Othe
 
 Memory Instructions
 ST* -- STore int given into *
+LD* -- LoaD value at address given into *
+
 
 Control Flow Instructions
 # says it is a comment, don't run anything on this line
@@ -62,7 +64,8 @@ int aReg = 0;
 int bReg = 0;
 int cReg = 0;
 bool CHK = false;
-std::vector<int> stack;
+int memSize = 1000;
+std::vector<int> memory;
 std::map<std::string, int> Labels;
 
 
@@ -236,6 +239,11 @@ std::vector<std::string> split(std::string str, std::string token){
     return result;
 }
 
+void init_Memory() {
+	for (int i=0;i<memSize;i++) {
+		memory[i] = 0;
+	}
+}
 
 /*
 AD* Function
@@ -455,7 +463,7 @@ int ST_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
 		return -1;
 	} else if (parseRegisters(lineCode[1]) == NotARegister) {
-		*regToUse = stoi(lineCode[1]);
+		*regToUse = stoi(lineCode[1], nullptr, 0);
 	} else {
 		switch (parseRegisters(lineCode[1])) {
 			case A:
@@ -489,8 +497,12 @@ int main(int argc, char * argv[]) {
 		return -1;
 	}
 	
-	programFile.open(argv[1], std::ios::in);
-	
+	if (split(argv[1], ".")[1] == "thl") {
+		programFile.open(argv[1], std::ios::in);
+	} else {
+		std::cout << "Error, wrong file format given.\nPlease input a .thl file.\n";
+		return -1;
+	}
 	// Preproccessing the file before executing
 	while(getline(programFile, line)) {
 		fileVector.push_back(line);
