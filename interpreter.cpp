@@ -455,10 +455,17 @@ int LT_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 
 /*
 ST* Function
-Usage: ST<Register> <Integer/Register>
-STores an Integer or value from a Register into target Register
+Usage: ST<Register> <Memory Address/Register>
+STores the value of <Register> into the Memory Address or Register shown. Using the same register twice is allowed, although not different than a nop
 */
-int ST_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
+
+
+/*
+LD* Function
+Usage: LD<Register> <Register/Integer>
+LoaDs the value from <Register/Integer> into <Register>
+*/
+int LD_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
 	if (parseLine.size() != 2) {
 		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
 		return -1;
@@ -694,27 +701,27 @@ int main(int argc, char * argv[]) {
 			
 			// Memory Instructions
 			case STA:
-				tempNum = ST_Star(lineCode, "STA", 1, &aReg);
+				tempNum = LS_Star(lineCode, "STA", 1, &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STB:
-				tempNum = ST_Star(lineCode, "STB", 1, &bReg);
+				tempNum = LD_Star(lineCode, "STB", 1, &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STC:
-				tempNum = ST_Star(lineCode, "STC", 1, &cReg);
+				tempNum = LD_Star(lineCode, "STC", 1, &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STX:
-				tempNum = ST_Star(lineCode, "STX", 1, &xReg);
+				tempNum = LD_Star(lineCode, "STX", 1, &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STY:
-				tempNum = ST_Star(lineCode, "STY", 1, &yReg);
+				tempNum = LD_Star(lineCode, "STY", 1, &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STZ:
-				tempNum = ST_Star(lineCode, "STZ", 1, &zReg);
+				tempNum = LD_Star(lineCode, "STZ", 1, &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 				
