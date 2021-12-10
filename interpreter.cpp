@@ -34,9 +34,16 @@ LT* -- Less than *, must be a register. Value comparing can be an int or a regis
 IFT -- IF the comparison instruction last used was True, run the next line. Otherwise skip it
 
 Memory Instructions
-ST* -- STore int given into *
-LD* -- LoaD value at address given into *
+ST* -- STore * into memory address given
+LD* -- LoaD value from different areas into *
 
+Input/Output Instructions
+INP -- take user INPut and store it into a dedicated spot in memory, or ROM. Stores into 0x01
+OUT -- Outputs different things depending on the state of memory address 0x09
+0x09 states:
+0 -- output the number in the memory address at 0x02 as an int
+1 -- output the number in the memory address at 0x02 as a char, will error if not in range 0-255
+2 -- same as 1, but appends a newline to the character before the next character
 
 Control Flow Instructions
 # says it is a comment, don't run anything on this line
@@ -64,8 +71,8 @@ int aReg = 0;
 int bReg = 0;
 int cReg = 0;
 bool CHK = false;
-int memSize = 1000;
-std::vector<int> memory;
+const int memSize = 1000;
+int memory[memSize] = { };
 std::map<std::string, int> Labels;
 
 
@@ -76,6 +83,9 @@ std::vector<std::string> lineCode;
 std::vector<std::string> fileVector;
 int tempNum;
 
+char n;
+
+bool debugMode = false;
 
 // The actual instructions that the user can use
 enum instructions {
@@ -128,6 +138,16 @@ enum instructions {
 	STX,
 	STY,
 	STZ,
+	LDA,
+	LDB,
+	LDC,
+	LDX,
+	LDY,
+	LDZ,
+	
+	// I/O Instructions
+	INP,
+	OUT,
 	
 	// Control Flow Instructions
 	comment,
@@ -200,6 +220,16 @@ instructions parseInstruction(std::string const& instruction) {
 	if (instruction == "STX") return STX;
 	if (instruction == "STY") return STY;
 	if (instruction == "STZ") return STZ;
+	if (instruction == "LDA") return LDA;
+	if (instruction == "LDB") return LDB;
+	if (instruction == "LDC") return LDC;
+	if (instruction == "LDX") return LDX;
+	if (instruction == "LDY") return LDY;
+	if (instruction == "LDZ") return LDZ;
+	
+	// Input/Output Instructions
+	if (instruction == "INP") return INP;
+	if (instruction == "OUT") return OUT;
 	
 	// Control Flow Instructions
 	if (instruction == "#") return comment;
@@ -239,11 +269,6 @@ std::vector<std::string> split(std::string str, std::string token){
     return result;
 }
 
-void init_Memory() {
-	for (int i=0;i<memSize;i++) {
-		memory[i] = 0;
-	}
-}
 
 /*
 AD* Function
@@ -338,7 +363,7 @@ int IN_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 /*
 CP* Function
 Usage CP<Register> <Integer/Register>
-ComPares an Integer or value from a Register to the Regiister specified, makes CHK flag 1 if it is equal, 0 otherwise
+ComPares an Integer or value from a Register to the Register specified, makes CHK flag 1 if it is equal, 0 otherwise
 */
 int CP_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
 	if (parseLine.size() != 2) {
@@ -455,22 +480,34 @@ int LT_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 
 /*
 ST* Function
-Usage: ST<Register> <Memory Address/Register>
-STores the value of <Register> into the Memory Address or Register shown. Using the same register twice is allowed, although not different than a nop
+Usage: ST<Register> <Memory Address>
+STores the value of <Register> into the Memory Address shown. Using the same register twice is allowed, although not different than a nop
 */
-
+int ST_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse){
+	if (parseLine.size() != 2) {
+		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		return -1;
+	} else {
+		memory[stoi(lineCode[1], nullptr, 0)] = *regToUse;
+	}
+	return 0;
+}
 
 /*
 LD* Function
-Usage: LD<Register> <Register/Integer>
-LoaDs the value from <Register/Integer> into <Register>
+Usage: LD<Register> <Register/Integer/Memory>
+LoaDs the value from <Register/Integer/Memory> into <Register>
 */
 int LD_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
 	if (parseLine.size() != 2) {
 		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
 		return -1;
 	} else if (parseRegisters(lineCode[1]) == NotARegister) {
-		*regToUse = stoi(lineCode[1], nullptr, 0);
+		if (split(lineCode[1], "x").size() == 2){
+			*regToUse = memory[stoi(lineCode[1], nullptr, 0)];
+		} else {
+			*regToUse = stoi(lineCode[1], nullptr, 0);
+		}
 	} else {
 		switch (parseRegisters(lineCode[1])) {
 			case A:
@@ -510,17 +547,21 @@ int main(int argc, char * argv[]) {
 		std::cout << "Error, wrong file format given.\nPlease input a .thl file.\n";
 		return -1;
 	}
+	if (argc >= 3) {
+		std::string argvStr = argv[2];
+		if (argvStr.compare("-d") == 0){debugMode = true;}
+	}
 	// Preproccessing the file before executing
 	while(getline(programFile, line)) {
 		fileVector.push_back(line);
 	}
-	
 	/*
 	Do an initial pass-through of the file, in order to get all the labels
 	That is ALL we are doing here, ignoring the rest of them
 	*/
 	for (int i=0;i<fileVector.size();i++){
 		lineCode = split(fileVector[i], " ");
+		if (lineCode.size() == 0) {continue;}
 		if (parseInstruction(lineCode[0]) == LBL) {
 			/*
 			LBL Command
@@ -531,14 +572,16 @@ int main(int argc, char * argv[]) {
 				std::cout << "LBL got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
 				return -1;
 			} else {
-				Labels[lineCode[1]] = 1;
+				Labels[lineCode[1]] = i;
 			}
 			
 		}
 	}
 	
+	
 	for (int i=0;i<fileVector.size();i++){
 		lineCode = split(fileVector[i], " ");
+		if (lineCode.size() == 0) {continue;}
 		switch (parseInstruction(lineCode[0])) {
 			case InvalidIns:
 				std::cout << lineCode[0] << " is not an instruction, exiting.\n";
@@ -696,35 +739,59 @@ int main(int argc, char * argv[]) {
 			IF CHK is True, execute the next line, otherwise skip it
 			*/
 			case IFT:
-				if (CHK) {i++;continue;}
+				if (!CHK) {i++;continue;}
 				break;
 			
 			// Memory Instructions
+			case LDA:
+				tempNum = LD_Star(lineCode, "LDA", 1, &aReg);
+				if (tempNum == -1) {return -1;}
+				break;
+			case LDB:
+				tempNum = LD_Star(lineCode, "LDB", 1, &bReg);
+				if (tempNum == -1) {return -1;}
+				break;
+			case LDC:
+				tempNum = LD_Star(lineCode, "LDC", 1, &cReg);
+				if (tempNum == -1) {return -1;}
+				break;
+			case LDX:
+				tempNum = LD_Star(lineCode, "LDX", 1, &xReg);
+				if (tempNum == -1) {return -1;}
+				break;
+			case LDY:
+				tempNum = LD_Star(lineCode, "LDY", 1, &yReg);
+				if (tempNum == -1) {return -1;}
+				break;
+			case LDZ:
+				tempNum = LD_Star(lineCode, "LDZ", 1, &zReg);
+				if (tempNum == -1) {return -1;}
+				break;
 			case STA:
-				tempNum = LS_Star(lineCode, "STA", 1, &aReg);
+				tempNum = ST_Star(lineCode, "STA", 1, &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STB:
-				tempNum = LD_Star(lineCode, "STB", 1, &bReg);
+				tempNum = ST_Star(lineCode, "STB", 1, &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STC:
-				tempNum = LD_Star(lineCode, "STC", 1, &cReg);
+				tempNum = ST_Star(lineCode, "STC", 1, &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STX:
-				tempNum = LD_Star(lineCode, "STX", 1, &xReg);
+				tempNum = ST_Star(lineCode, "STX", 1, &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STY:
-				tempNum = LD_Star(lineCode, "STY", 1, &yReg);
+				tempNum = ST_Star(lineCode, "STY", 1, &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STZ:
-				tempNum = LD_Star(lineCode, "STZ", 1, &zReg);
+				tempNum = ST_Star(lineCode, "STZ", 1, &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
-				
+			
 			// Control Flow Instructions
 			case comment:
 				continue;
@@ -738,7 +805,7 @@ int main(int argc, char * argv[]) {
 					std::cout << "JMP got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
 					return -1;
 				} else {
-					i = Labels[lineCode[1]]-1;
+					i = (Labels[lineCode[1]]-1);
 				}
 				break;
 			case JSR:
@@ -765,16 +832,26 @@ int main(int argc, char * argv[]) {
 			*/
 			case BNE:
 				if (lineCode.size() != 2) {
-					std::cout << "BEQ got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+					std::cout << "BNE got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
 					return -1;
 				} else {
 					if (!CHK) {i=Labels[lineCode[1]]-1;}
 				}
 				break;
-			
+		
+			}
+			std::cout << lineCode[0] << "\n";
+			if (debugMode) {
+				std::cout << "A: " << aReg << "\n";
+				std::cout << "B: " << bReg << "\n";
+				std::cout << "C: " << cReg << "\n";
+				std::cout << "X: " << xReg << "\n";
+				std::cout << "Y: " << yReg << "\n";
+				std::cout << "Z: " << zReg << "\n";
+				std::cout << "CHK: " << CHK << "\n";
+				system("pause");
 		}
 		
-		std::cout << lineCode[0] << "\n";
 	}
 	
 	/*

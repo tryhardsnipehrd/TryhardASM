@@ -1,1 +1,35 @@
+# Comments must have a space between delimeter and text
+# Here we are making sure all registers are 0, honestly not needed but I like to be sure
+STA 0
+STB 0
+STC 0
+STX 0
+STY 0
+STZ 0
+# Showing A register, LBL, BNE, IN*, and CP8*
+# Labels can be all caps, start with numbers, underscores, pretty much anything that's a char
+LBL A_LOOP
+INA
+CPA 100
+BNE A_LOOP
+# The simple program above will loop A from whatever it starts with to 100, then continue execution
 
+
+
+# Uses the B register to show how one would loop from 100-0
+# DC* is not a thing, so we have to use AD* instead
+STB 100
+LBL B_LOOP
+ADB -1
+CPB 0
+BNE B_LOOP
+# Using a different type of comparison, IFT
+# IFT only runs the next line if the comparison flag is true
+# IT CANNOT HAVE A COMMENT AFTER IT
+# If it does, it just won't run at all, so don't do it
+STX 5
+LBL C_LOOP
+ADC X
+LTC 5000
+BNE C_LOOP
+# If you look at the memory after running, you'll see C's actual value is 5005, because it is checking if 5000 is Less than C, not if it is less than or equal to
