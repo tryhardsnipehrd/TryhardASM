@@ -38,12 +38,8 @@ ST* -- STore * into memory address given
 LD* -- LoaD value from different areas into *
 
 Input/Output Instructions
-INP -- take user INPut and store it into a dedicated spot in memory, or ROM. Stores into 0x01
-OUT -- Outputs different things depending on the state of memory address 0x09
-0x09 states:
-0 -- output the number in the memory address at 0x02 as an int
-1 -- output the number in the memory address at 0x02 as a char, will error if not in range 0-255
-2 -- same as 1, but appends a newline to the character before the next character
+INP -- take user INPut and store it into given memory spot
+OUT -- Outputs the value given to terminal
 
 Control Flow Instructions
 # says it is a comment, don't run anything on this line
@@ -790,6 +786,14 @@ int main(int argc, char * argv[]) {
 			case STZ:
 				tempNum = ST_Star(lineCode, "STZ", 1, &zReg);
 				if (tempNum == -1) {return -1;}
+				break;
+				
+			// Input/Output Instructions
+			case INP:
+				
+				break;
+			case OUT:
+				
 				break;
 			
 			// Control Flow Instructions
