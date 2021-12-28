@@ -59,6 +59,9 @@ BNE -- Branch if Not Equal to. Branches to the label if the CHK flag is NOT set
 #include <string>
 #include <map>
 
+// Weird hackery, don't question it, it stops the errors.
+#define nop 
+
 // Define all memory here
 int xReg = 0;
 int yReg = 0;
@@ -530,6 +533,8 @@ int LD_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 	return 0;
 }
 
+
+
 int main(int argc, char * argv[]) {
 	// Make sure they actually specified a file
 	if (argc == 1){
@@ -789,11 +794,30 @@ int main(int argc, char * argv[]) {
 				break;
 				
 			// Input/Output Instructions
+			/*
+			INP Function
+			Usage: INP <Memory Address>
+			Takes the INPut from user, and stores it into <Memory Address>
+			*/
 			case INP:
-				
+				if (lineCode.size() != 2) {
+					std::cout << "INP got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+					return -1;
+				} else {
+					// Take the input, it will only allow integer numbers, so no decimals or strings...
+					std::cin >> tempNum;
+					memory[stoi(lineCode[1], nullptr, 0)] = tempNum;
+				}
 				break;
 			case OUT:
-				
+				if (lineCode.size() != 2) {
+					std::cout << "OUT got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+					return -1;
+				} else {
+					// We are assuming the programmer knows to use numbers, so we are not checking it first
+					// Don't mess it up
+					std::cout << memory[stoi(lineCode[1], nullptr, 0)] << "\n";
+				}
 				break;
 			
 			// Control Flow Instructions
