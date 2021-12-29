@@ -1,11 +1,9 @@
 /*
 ~~~~OVERVIEW~~~~
-No Strings, chars, etc
-only integers, so negative is allowed
-
+Language designed similarly to 65(c)02 Assembly, with some personal design choices instead.
+Should technically be Turing complete, although that's a whole different debate.
 
 ~~~~PLANS~~~~
-Simple instructions, similar to 6502 ASM
 
 6 registers:
 X 
@@ -15,38 +13,39 @@ A
 B
 C
 
+Each register is initialized to 0 upon starting
+
 Memory/RAM --- 	a variable amount of space for variables, defined during runtime, before code is ran
 Defaults to 1K slots as of now, will be variable later
 
-Technically a 7th register, really just a flag
-CHK --- Holds the value of the Comparison instructions, allows one to use it if they really want
+
+CHK flag --- Holds the value of the Comparison instructions, allows one to see the output of the comparison
 
 
 Math Instructions
-AD* -- ADd value to *, can be register or int
-SB* -- SuBtract value from *, can be register or int
-IN* -- INcrement * by 1
+AD* -- ADd value to *, argument can be register or int
+SB* -- SuBtract value from *, argument can be register or int
+IN* -- INcrement * by 1, takes no arguments
 
 Comparison Instructions
-CP* -- ComPare to *, must be a register. Value comparing can be an int or a register
-GT* -- Greater Than *, must be a register. Value comparing can be an int or a register
-LT* -- Less than *, must be a register. Value comparing can be an int or a register
+CP* -- ComPare to *. Argument, which is value comparing, can be an int or a register
+GT* -- Greater Than *. Argument comparing can be an int or a register
+LT* -- Less than *. Argument comparing can be an int or a register
 IFT -- IF the comparison instruction last used was True, run the next line. Otherwise skip it
 
 Memory Instructions
-ST* -- STore * into memory address given
-LD* -- LoaD value from different areas into *
+ST* -- STore register * into memory address given.
+LD* -- LoaD value from memory address given into *.
 
 Input/Output Instructions
 INP -- take user INPut and store it into given memory spot
 OUT -- Outputs the value given to terminal
 
 Control Flow Instructions
-# says it is a comment, don't run anything on this line
-LBL -- Create a LaBeL to JMP to
-JMP -- JuMP to the noted Label
-JSR -- Jump to SubRoutine. Go to the Label, returns at RSR. MUST HAVE A RSR TO RETURN FROM
-RSR -- When to return from the JSR, all JSR Labels must have one
+# --- says it is a comment, don't run anything on this line, must be a singular # followed by a space, eg: "# This is a comment"
+## is invalid, as is "#This is a comment"
+LBL -- Create a LaBeL to JMP to.
+JMP -- JuMP to the given LaBeL
 BEQ -- Branch if EQual to. Branches to the label if the CHK flag is set
 BNE -- Branch if Not Equal to. Branches to the label if the CHK flag is NOT set
 
@@ -152,8 +151,6 @@ enum instructions {
 	comment,
 	LBL,
 	JMP,
-	JSR,
-	RSR,
 	BEQ,
 	BNE,
 	InvalidIns
@@ -234,8 +231,6 @@ instructions parseInstruction(std::string const& instruction) {
 	if (instruction == "#") return comment;
 	if (instruction == "LBL") return LBL;
 	if (instruction == "JMP") return JMP;
-	if (instruction == "JSR") return JSR;
-	if (instruction == "RSR") return RSR;
 	if (instruction == "BEQ") return BEQ;
 	if (instruction == "BNE") return BNE;
 	return InvalidIns;
@@ -274,88 +269,96 @@ AD* Function
 Usage: AD<Register> <Integer/Register>
 ADds the Integer or value of the Register given to the current Register, negative numbers are allowed
 */
+
+// This function will be commented, the rest operate on a similar basis. I will only explain things in those that are different.
+// Yes the comments are almost too much and obvious, I'd rather too much than too little.
 int AD_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
-	if (parseLine.size() != 2){
-					std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
-					return -1;
-				} else if (parseRegisters(parseLine[1]) == NotARegister) {
-					tempNum = std::stoi(parseLine[1]);
-					*regToUse += tempNum;
-				} else {
-					switch (parseRegisters(parseLine[1])) {
-						case A:
-							*regToUse += aReg;
-							break;
-						case B:
-							*regToUse += bReg;
-							break;
-						case C:
-							*regToUse += cReg;
-							break;
-						case X:
-							*regToUse += xReg;
-							break;
-						case Y:
-							*regToUse += yReg;
-							break;
-						case Z:
-							*regToUse += zReg;
-							break;
-					}
-				}
-				return 0;
+	if (parseLine.size() != 2){ 
+		// Check if there are exactly 2 elements in the line, the AD* and the argument
+		// If we did not get that, we will error and give a better output. (I can probably turn this into a function)
+		// Essentially say that we expected a different amount of arguments
+		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		return -1;
+	} else if (parseRegisters(parseLine[1]) == NotARegister) { 
+		// See if we got something other than a register, we are assuming it is a number
+		tempNum = std::stoi(parseLine[1]); // Grabbing the second element of the vector, which is the argument given
+		*regToUse += tempNum; // Add that number to the register given by the command
+	} else {
+		switch (parseRegisters(parseLine[1])) { 
+			// If we actually hit a register, we will then check which one it is
+			// This does essentially the the same as above, just redone for each register
+			case A:
+				*regToUse += aReg;
+				break;
+			case B:
+				*regToUse += bReg;
+				break;
+			case C:
+				*regToUse += cReg;
+				break;
+			case X:
+				*regToUse += xReg;
+				break;
+			case Y:
+				*regToUse += yReg;
+				break;
+			case Z:
+				*regToUse += zReg;
+				break;
+		}
+	}
+	return 0;
 }
 
 /*
 SB* Function
-Usage
-SB<Register> <Integer/Register>
+Usage: SB<Register> <Integer/Register>
 SuBtracts the Integer or value of the Register given from the current Register, negative numbers can be the result
 */
 int SB_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
 	if (parseLine.size() != 2){
-					std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
-					return -1;
-				} else if (parseRegisters(parseLine[1]) == NotARegister) {
-					tempNum = std::stoi(parseLine[1]);
-					*regToUse -= tempNum;
-				} else {
-					switch (parseRegisters(parseLine[1])) {
-						case A:
-							*regToUse -= aReg;
-							break;
-						case B:
-							*regToUse -= bReg;
-							break;
-						case C:
-							*regToUse -= cReg;
-							break;
-						case X:
-							*regToUse -= xReg;
-							break;
-						case Y:
-							*regToUse -= yReg;
-							break;
-						case Z:
-							*regToUse -= zReg;
-							break;
-					}
-				}
-				return 0;
+		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		return -1;
+	} else if (parseRegisters(parseLine[1]) == NotARegister) {
+		tempNum = std::stoi(parseLine[1]);
+		*regToUse -= tempNum; // As a bi-product of C++ being smart, it will just add a negative number
+	} else {
+		switch (parseRegisters(parseLine[1])) {
+			case A:
+				*regToUse -= aReg;
+				break;
+			case B:
+				*regToUse -= bReg;
+				break;
+			case C:
+				*regToUse -= cReg;
+				break;
+			case X:
+				*regToUse -= xReg;
+				break;
+			case Y:
+				*regToUse -= yReg;
+				break;
+			case Z:
+				*regToUse -= zReg;
+				break;
+		}
+	}
+	return 0;
 }
 
 /*
 IN* Function
 Usage: IN<Register>
-INcrements a Register by 1
+INcrements the Register given by 1
 */
 int IN_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
 	if (parseLine.size() != 1){
-					std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
-					return -1;
-				} else {*regToUse += 1;}
+		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		return -1;
+	} else {*regToUse += 1;} // This one literally just adds one to the register given, since it takes no arguments
 				
-				return 0;
+	return 0;
 }
 
 
@@ -369,34 +372,35 @@ int CP_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
 		return -1;
 	} else if (parseRegisters(lineCode[1]) == NotARegister) {
-					if (*regToUse == stoi(lineCode[1])) {
-						CHK = true;
-					} else {
-						CHK = false;
-					}
-				} else {
-					switch (parseRegisters(lineCode[1])) {
-						case A:
-							CHK = (*regToUse == aReg);
-							break;
-						case B:
-							CHK = (*regToUse == bReg);
-							break;
-						case C:
-							CHK = (*regToUse == cReg);
-							break;
-						case X:
-							CHK = (*regToUse == xReg);
-							break;
-						case Y:
-							CHK = (*regToUse == yReg);
-							break;
-						case Z:
-							CHK = (*regToUse == zReg);
-							break;
-					}
-				}
-			return 0;
+		if (*regToUse == stoi(lineCode[1])) {
+			CHK = true;
+		} else {
+			CHK = false;
+		}
+	} else {
+		switch (parseRegisters(lineCode[1])) {
+			case A:
+				CHK = (*regToUse == aReg);
+				// Doing a bit of trickery here to return whether or not the two are the same
+				break;
+			case B:
+				CHK = (*regToUse == bReg);
+				break;
+			case C:
+				CHK = (*regToUse == cReg);
+				break;
+			case X:
+				CHK = (*regToUse == xReg);
+				break;
+			case Y:
+				CHK = (*regToUse == yReg);
+				break;
+			case Z:
+				CHK = (*regToUse == zReg);
+				break;
+		}
+	}
+return 0;
 }
 
 /*
@@ -480,17 +484,19 @@ int LT_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 /*
 ST* Function
 Usage: ST<Register> <Memory Address>
-STores the value of <Register> into the Memory Address shown. Using the same register twice is allowed, although not different than a nop
+STores the value of <Register> into the Memory Address shown.
 */
 int ST_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse){
 	if (parseLine.size() != 2) {
 		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
 		return -1;
 	} else {
+		// This little mess here is just telling it to turn the string that is returned by lineCode into an integer, which is what memroy uses
 		memory[stoi(lineCode[1], nullptr, 0)] = *regToUse;
 	}
 	return 0;
 }
+
 
 /*
 LD* Function
@@ -503,6 +509,7 @@ int LD_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 		return -1;
 	} else if (parseRegisters(lineCode[1]) == NotARegister) {
 		if (split(lineCode[1], "x").size() == 2){
+			// Same hackery as above here
 			*regToUse = memory[stoi(lineCode[1], nullptr, 0)];
 		} else {
 			*regToUse = stoi(lineCode[1], nullptr, 0);
@@ -538,6 +545,7 @@ int LD_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs
 int main(int argc, char * argv[]) {
 	// Make sure they actually specified a file
 	if (argc == 1){
+		// This is a kinda horrible way to check, but it at least makes sure we get an argument
 		std::cout << "Please specify a file to read from\n";
 		return -1;
 	}
@@ -549,19 +557,23 @@ int main(int argc, char * argv[]) {
 		return -1;
 	}
 	if (argc >= 3) {
+		// There are better ways to do this, but this way works for me and hasn't broken yet
 		std::string argvStr = argv[2];
 		if (argvStr.compare("-d") == 0){debugMode = true;}
 	}
 	// Preproccessing the file before executing
+	// This just adds the lines from the file into a format we can read and jump without an issue
 	while(getline(programFile, line)) {
 		fileVector.push_back(line);
 	}
+	programFile.close(); // Closing the file here in order to save on memory, since people might have large files, this makes it a bit easier
 	/*
 	Do an initial pass-through of the file, in order to get all the labels
-	That is ALL we are doing here, ignoring the rest of them
+	That is ALL we are doing here, ignoring the rest of the lines
 	*/
 	for (int i=0;i<fileVector.size();i++){
 		lineCode = split(fileVector[i], " ");
+		// Ignoring all of the blank lines, since those are correct
 		if (lineCode.size() == 0) {continue;}
 		if (parseInstruction(lineCode[0]) == LBL) {
 			/*
@@ -573,19 +585,26 @@ int main(int argc, char * argv[]) {
 				std::cout << "LBL got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
 				return -1;
 			} else {
+				// Labels is just a map of strings with integers as the value, allowing us to use custom names
 				Labels[lineCode[1]] = i;
 			}
 			
 		}
 	}
 	
-	
+	// Now we actually start the craziness, after nearly 600 lines
 	for (int i=0;i<fileVector.size();i++){
+		// Go through each file, splitting it
 		lineCode = split(fileVector[i], " ");
+		// Like above, if it is blank, we skip it
 		if (lineCode.size() == 0) {continue;}
 		switch (parseInstruction(lineCode[0])) {
+			// Since we currently aren't too worried about performance, we can group them in an easy to read way.
+			// Once performance is an issue, we will have to start grouping by most used... which will take research and be a pain
+			
+			// If the instruction is not in the list, we error since it doesn't know what to do here, and give the line number so they can fix it
 			case InvalidIns:
-				std::cout << lineCode[0] << " is not an instruction, exiting.\n";
+				std::cout << lineCode[0] << " is not an instruction, exiting on line " << i+1 << ".\n";
 				return -1;
 			// Math Instructions
 			case ADA:
@@ -740,6 +759,8 @@ int main(int argc, char * argv[]) {
 			IF CHK is True, execute the next line, otherwise skip it
 			*/
 			case IFT:
+				// This is hyper simple, literally just adding 1 to the counter that keeps track of where in the file we are.
+				// This is a super hacky yet effective trick heh
 				if (!CHK) {i++;continue;}
 				break;
 			
@@ -798,6 +819,8 @@ int main(int argc, char * argv[]) {
 			INP Function
 			Usage: INP <Memory Address>
 			Takes the INPut from user, and stores it into <Memory Address>
+			Note: For some reason I'm not sure of, it will NOT error if the user inputs a character or string
+			It will just store a 0 into that memory spot, which is... somehow useful, but I'm not sure how yet
 			*/
 			case INP:
 				if (lineCode.size() != 2) {
@@ -834,16 +857,13 @@ int main(int argc, char * argv[]) {
 					return -1;
 				} else {
 					i = (Labels[lineCode[1]]-1);
+					// This is required in Branch instructions because the file will jump one more when it goes, meaning it will skip the line we state
 				}
-				break;
-			case JSR:
-				break;
-			case RSR:
 				break;
 			/*
 			BEQ Command
 			Usage: BEQ <Label> 
-			Branch to Label if CHK is EQual to 1
+			Branch to Label if CHK is EQual to 1, or True
 			*/
 			case BEQ:
 				if (lineCode.size() != 2) {
@@ -868,8 +888,8 @@ int main(int argc, char * argv[]) {
 				break;
 		
 			}
-			std::cout << lineCode[0] << "\n";
 			if (debugMode) {
+				std::cout << lineCode[0] << "\n";
 				std::cout << "A: " << aReg << "\n";
 				std::cout << "B: " << bReg << "\n";
 				std::cout << "C: " << cReg << "\n";
@@ -877,7 +897,7 @@ int main(int argc, char * argv[]) {
 				std::cout << "Y: " << yReg << "\n";
 				std::cout << "Z: " << zReg << "\n";
 				std::cout << "CHK: " << CHK << "\n";
-				system("pause");
+				system("pause"); // This line somehow does exactly what I need with debug mode, I honestly don't know how it works
 		}
 		
 	}
@@ -894,6 +914,6 @@ int main(int argc, char * argv[]) {
 	std::cout << "Z: " << zReg << "\n";
 	std::cout << "CHK: " << CHK << "\n";
 	
-	programFile.close();
+	
 	return 0;
 }

@@ -1,2 +1,6 @@
-INP 0x01
-OUT 0x01
+LDA -10
+LDB 5
+SBA B
+# Current value of A is 5
+SBA -3
+# Current value of A is 8
