@@ -1,0 +1,50 @@
+# Let's make a simple guessing game!
+
+
+LBL Setup
+LDA 64
+# This is not random, but lets us pick the number
+LDC 0
+LDX 0
+LDY 0
+LDZ 0
+
+# Storing numbers that we will use as messages
+LDB 444
+STB 0x20
+LDB 111
+STB 0x21
+# Haha funny number ;)
+LDB 69420
+STB 0x22
+
+JMP GameLoop
+
+LBL GameLoop
+# Take the number from the user and store it into 0x01
+INP 0x01
+
+# Store it into B so we can manipulate it
+LDB 0x01
+
+# If A is greater than B, aka if the number to guess is higher than the number guessed
+GTB A
+# Output our "up" message
+IFT
+OUT 0x20
+
+# Opposite of above
+LTB A
+# Output our "down" message
+IFT
+OUT 0x21
+
+# If it is dead on, we go to the end
+CPB A
+BEQ End
+
+# If we did not guess it, jump back to GameLoop
+JMP GameLoop
+
+LBL End
+OUT 0x22

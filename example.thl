@@ -1,11 +1,11 @@
 # Comments must have a space between delimeter and text
 # Here we are making sure all registers are 0, honestly not needed but I like to be sure
-STA 0
-STB 0
-STC 0
-STX 0
-STY 0
-STZ 0
+LDA 0
+LDB 0
+LDC 0
+LDX 0
+LDY 0
+LDZ 0
 # Showing A register, LBL, BNE, IN*, and CP8*
 # Labels can be all caps, start with numbers, underscores, pretty much anything that's a char
 LBL A_LOOP
@@ -18,7 +18,7 @@ BNE A_LOOP
 
 # Uses the B register to show how one would loop from 100-0
 # DC* is not a thing, so we have to use AD* instead
-STB 100
+LDB 100
 LBL B_LOOP
 ADB -1
 CPB 0
@@ -27,9 +27,29 @@ BNE B_LOOP
 # IFT only runs the next line if the comparison flag is true
 # IT CANNOT HAVE A COMMENT AFTER IT
 # If it does, it just won't run at all, so don't do it
-STX 5
+LDX 5
 LBL C_LOOP
 ADC X
-LTC 5000
+LTC 50
 BNE C_LOOP
 # If you look at the memory after running, you'll see C's actual value is 5005, because it is checking if 5000 is Less than C, not if it is less than or equal to
+
+
+
+# Here we are going to take user input, then store it into the first spot in memory
+# By doing this, we can now print 2 different numbers depending on what they give
+LDY 9
+STY 0x02
+INY
+INY
+STY 0x03
+
+INP 0x00
+LDX 0x00
+
+LTX 10
+IFT
+OUT 0x03
+GTX 10
+IFT
+OUT 0x02

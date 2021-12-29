@@ -1,6 +1,23 @@
-LDA -10
-LDB 5
-SBA B
-# Current value of A is 5
-SBA -3
-# Current value of A is 8
+# This is the guessingGame.thl, optimized to be as little lines as I could make it in about 5 minutes
+# Feel free to try to optimize it more... this won't stay long
+
+LDA 64
+LDC 444
+LDX 111
+LDY 69420
+STY 0x22
+LBL GameLoop
+INP 0x01
+LDB 0x01
+GTB A
+IFT
+STC 0x20
+LTB A
+IFT
+STX 0x20
+CPB A
+BEQ End
+OUT 0x20
+JMP GameLoop
+LBL End
+OUT 0x22
