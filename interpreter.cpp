@@ -81,6 +81,7 @@ const int memSize = 1000;
 int memory[memSize] = { };
 std::map<std::string, int> Labels;
 std::map<int, std::string> PrintDirectiveValues;
+std::string currentInpString = "-";
 
 
 // Define non-user variables
@@ -863,6 +864,7 @@ int main(int argc, char * argv[]) {
 					return -1;
 				} else {
 					// Take the input, it will only allow integer numbers, so no decimals or strings...
+					std::cout << currentInpString;
 					std::cin >> tempNum;
 					memory[stoi(lineCode[1], nullptr, 0)] = tempNum;
 				}
@@ -941,9 +943,20 @@ int main(int argc, char * argv[]) {
 					ERR(incorrectArgCount, "!print", 2, 1, "!print expects a number then a string, these were not given");
 				} else {
 					PrintDirectiveValues[stoi(lineCode[1], nullptr, 0)] = split(fileVector[i], "\"")[1];
+					return -1;
 				}
 				break;
+				
+				case INPUT:
+					if (lineCode.size() < 2) {
+						ERR(incorrectArgCount, "!input", 2, 1);
+						return -1;
+					} else {
+						currentInpString = split(fileVector[i], "\"")[1];
+					}
+					break;
 			}
+			
 			
 			
 			if (debugMode) {
@@ -978,6 +991,7 @@ int main(int argc, char * argv[]) {
 		{
 			std::cout << elem.first << " " << elem.second << "\n";
 		}
+		std::cout << currentInpString << "\n";
 		
 	}	
 	return 0;

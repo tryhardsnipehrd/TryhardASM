@@ -1,6 +1,6 @@
-!print 444 "Go Up!"
-LDA 444
-STA 0x01
+!input "Enter: "
+INP 0x01
 OUT 0x01
-!print 444 "'Testing'"
+!input "Number: "
+INP 0x01
 OUT 0x01
