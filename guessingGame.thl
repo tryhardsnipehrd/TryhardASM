@@ -1,5 +1,9 @@
 # Let's make a simple guessing game!
 
+!print 444 "Go Up!"
+!print 111 "Go Down!"
+!print 69420 "You Guessed it!"
+
 
 LBL Setup
 LDA 64

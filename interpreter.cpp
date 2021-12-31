@@ -49,6 +49,11 @@ JMP -- JuMP to the given LaBeL
 BEQ -- Branch if EQual to. Branches to the label if the CHK flag is set
 BNE -- Branch if Not Equal to. Branches to the label if the CHK flag is NOT set
 
+
+Pre-Processor Directives
+!print --- when OUT prints the first argument, which is a number, it will instead replace that with the string given as the second argument
+!input --- will output the string given when INP is ran, allowing one to tell the player what to do
+^^^ Might be allowed anywhere, pretty much allowing on-the-fly changing, so that more complex apps can be made.
 */
 
 // Includes here
@@ -61,6 +66,9 @@ BNE -- Branch if Not Equal to. Branches to the label if the CHK flag is NOT set
 // Weird hackery, don't question it, it stops the errors.
 #define nop 
 
+// Defining errors here, makes it much easier to read and deal with than just numbers
+#define incorrectArgCount 1
+
 // Define all memory here
 int xReg = 0;
 int yReg = 0;
@@ -72,6 +80,7 @@ bool CHK = false;
 const int memSize = 1000;
 int memory[memSize] = { };
 std::map<std::string, int> Labels;
+std::map<int, std::string> PrintDirectiveValues;
 
 
 // Define non-user variables
@@ -84,6 +93,7 @@ int tempNum;
 char n;
 
 bool debugMode = false;
+bool foundPrintDirective = false;
 
 // The actual instructions that the user can use
 enum instructions {
@@ -153,6 +163,11 @@ enum instructions {
 	JMP,
 	BEQ,
 	BNE,
+	
+	// Directives
+	PRINT,
+	INPUT,
+	
 	InvalidIns
 };
 
@@ -233,6 +248,11 @@ instructions parseInstruction(std::string const& instruction) {
 	if (instruction == "JMP") return JMP;
 	if (instruction == "BEQ") return BEQ;
 	if (instruction == "BNE") return BNE;
+	
+	// Pre-Processor Directives
+	if (instruction == "!print") return PRINT;
+	if (instruction == "!input") return INPUT;
+	
 	return InvalidIns;
 };
 
@@ -265,6 +285,21 @@ std::vector<std::string> split(std::string str, std::string token){
 
 
 /*
+This function handles errors, instead of making the constantly, just call this then return -1
+This will eventually evolve, but for now just prints
+*/
+void ERR(int errorToCall, std::string insStr, int expArgs, int parseLineSize, std::string additionalText = "NWDNZ") {
+	switch (errorToCall) {
+		case incorrectArgCount: // This is to be called when the number of args given is incorrect
+			std::cout << insStr << " got " << parseLineSize - 1 << " arguments, and expected " << expArgs << ".\n";
+			break;
+	}
+	if (additionalText != "NWDNZ") {std::cout << additionalText << "\n";}
+}
+
+
+
+/*
 AD* Function
 Usage: AD<Register> <Integer/Register>
 ADds the Integer or value of the Register given to the current Register, negative numbers are allowed
@@ -272,12 +307,12 @@ ADds the Integer or value of the Register given to the current Register, negativ
 
 // This function will be commented, the rest operate on a similar basis. I will only explain things in those that are different.
 // Yes the comments are almost too much and obvious, I'd rather too much than too little.
-int AD_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
+int AD_Star (std::vector<std::string> parseLine, std::string insStr, int *regToUse) {
 	if (parseLine.size() != 2){ 
 		// Check if there are exactly 2 elements in the line, the AD* and the argument
 		// If we did not get that, we will error and give a better output. (I can probably turn this into a function)
 		// Essentially say that we expected a different amount of arguments
-		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		ERR(incorrectArgCount, insStr, 2, parseLine.size());
 		return -1;
 	} else if (parseRegisters(parseLine[1]) == NotARegister) { 
 		// See if we got something other than a register, we are assuming it is a number
@@ -315,9 +350,9 @@ SB* Function
 Usage: SB<Register> <Integer/Register>
 SuBtracts the Integer or value of the Register given from the current Register, negative numbers can be the result
 */
-int SB_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
+int SB_Star (std::vector<std::string> parseLine, std::string insStr, int *regToUse) {
 	if (parseLine.size() != 2){
-		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		ERR(incorrectArgCount, insStr, 2, parseLine.size());
 		return -1;
 	} else if (parseRegisters(parseLine[1]) == NotARegister) {
 		tempNum = std::stoi(parseLine[1]);
@@ -352,9 +387,9 @@ IN* Function
 Usage: IN<Register>
 INcrements the Register given by 1
 */
-int IN_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
+int IN_Star (std::vector<std::string> parseLine, std::string insStr, int *regToUse) {
 	if (parseLine.size() != 1){
-		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		ERR(incorrectArgCount, insStr, 1, parseLine.size());
 		return -1;
 	} else {*regToUse += 1;} // This one literally just adds one to the register given, since it takes no arguments
 				
@@ -367,9 +402,9 @@ CP* Function
 Usage CP<Register> <Integer/Register>
 ComPares an Integer or value from a Register to the Register specified, makes CHK flag 1 if it is equal, 0 otherwise
 */
-int CP_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
+int CP_Star (std::vector<std::string> parseLine, std::string insStr, int *regToUse) {
 	if (parseLine.size() != 2) {
-		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		ERR(incorrectArgCount, insStr, 2, parseLine.size());
 		return -1;
 	} else if (parseRegisters(lineCode[1]) == NotARegister) {
 		if (*regToUse == stoi(lineCode[1])) {
@@ -408,9 +443,9 @@ GT* Function
 Usage: GT<Register> <Integer/Register>
 See if a given Integer or Register is Greater Than the Register with the command, makes CHK flag 1 if it is, 0 otherwise
 */
-int GT_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
+int GT_Star (std::vector<std::string> parseLine, std::string insStr, int *regToUse) {
 	if (parseLine.size() != 2) {
-		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		ERR(incorrectArgCount, insStr, 2, parseLine.size());
 		return -1;
 	} else if (parseRegisters(lineCode[1]) == NotARegister) {
 		if (*regToUse < stoi(lineCode[1])) {
@@ -449,9 +484,9 @@ LT* Function
 Usage: LT<Register> <Integer/Register>
 See if a given Integer or Register is Less Than the Register with the command, makes CHK flag 1 if it is, 0 otherwise
 */
-int LT_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
+int LT_Star (std::vector<std::string> parseLine, std::string insStr, int *regToUse) {
 	if (parseLine.size() != 2) {
-		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		ERR(incorrectArgCount, insStr, 2, parseLine.size());
 		return -1;
 	} else if (parseRegisters(lineCode[1]) == NotARegister) {
 		CHK = (*regToUse > stoi(lineCode[1]));
@@ -486,9 +521,9 @@ ST* Function
 Usage: ST<Register> <Memory Address>
 STores the value of <Register> into the Memory Address shown.
 */
-int ST_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse){
+int ST_Star (std::vector<std::string> parseLine, std::string insStr, int *regToUse){
 	if (parseLine.size() != 2) {
-		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		ERR(incorrectArgCount, insStr, 2, parseLine.size());
 		return -1;
 	} else {
 		// This little mess here is just telling it to turn the string that is returned by lineCode into an integer, which is what memroy uses
@@ -503,9 +538,9 @@ LD* Function
 Usage: LD<Register> <Register/Integer/Memory>
 LoaDs the value from <Register/Integer/Memory> into <Register>
 */
-int LD_Star (std::vector<std::string> parseLine, std::string insStr, int expArgs, int *regToUse) {
+int LD_Star (std::vector<std::string> parseLine, std::string insStr, int *regToUse) {
 	if (parseLine.size() != 2) {
-		std::cout << insStr << " got " << parseLine.size() - 1 << " arguments, and expected " << expArgs << ".\n";
+		ERR(incorrectArgCount, insStr, 2, parseLine.size());
 		return -1;
 	} else if (parseRegisters(lineCode[1]) == NotARegister) {
 		if (split(lineCode[1], "x").size() == 2){
@@ -608,149 +643,149 @@ int main(int argc, char * argv[]) {
 				return -1;
 			// Math Instructions
 			case ADA:
-				tempNum = AD_Star(lineCode, "ADA", 1, &aReg);
+				tempNum = AD_Star(lineCode, "ADA", &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case ADB:
-				tempNum = AD_Star(lineCode, "ADB", 1, &bReg);
+				tempNum = AD_Star(lineCode, "ADB", &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case ADC:
-				tempNum = AD_Star(lineCode, "ADC", 1, &cReg);
+				tempNum = AD_Star(lineCode, "ADC", &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case ADX:
-				tempNum = AD_Star(lineCode, "ADX", 1, &xReg);
+				tempNum = AD_Star(lineCode, "ADX", &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case ADY:
-				tempNum = AD_Star(lineCode, "ADY", 1, &yReg);
+				tempNum = AD_Star(lineCode, "ADY", &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case ADZ:
-				tempNum = AD_Star(lineCode, "ADZ", 1, &zReg);
+				tempNum = AD_Star(lineCode, "ADZ", &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case SBA:
-				tempNum = SB_Star(lineCode, "SBA", 1, &aReg);
+				tempNum = SB_Star(lineCode, "SBA", &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case SBB:
-				tempNum = SB_Star(lineCode, "SBB", 1, &bReg);
+				tempNum = SB_Star(lineCode, "SBB", &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case SBC:
-				tempNum = SB_Star(lineCode, "SBC", 1, &cReg);
+				tempNum = SB_Star(lineCode, "SBC", &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case SBX:
-				tempNum = SB_Star(lineCode, "SBX", 1, &xReg);
+				tempNum = SB_Star(lineCode, "SBX", &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case SBY:
-				tempNum = SB_Star(lineCode, "SBY", 1, &yReg);
+				tempNum = SB_Star(lineCode, "SBY", &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case SBZ:
-				tempNum = SB_Star(lineCode, "SBZ", 1, &zReg);
+				tempNum = SB_Star(lineCode, "SBZ", &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case INA:
-				tempNum = IN_Star(lineCode, "INA", 0, &aReg);
+				tempNum = IN_Star(lineCode, "INA", &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case INB:
-				tempNum = IN_Star(lineCode, "INB", 0, &bReg);
+				tempNum = IN_Star(lineCode, "INB", &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case INC:
-				tempNum = IN_Star(lineCode, "INC", 0, &cReg);
+				tempNum = IN_Star(lineCode, "INC", &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case INX:
-				tempNum = IN_Star(lineCode, "INX", 0, &xReg);
+				tempNum = IN_Star(lineCode, "INX", &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case INY:
-				tempNum = IN_Star(lineCode, "INY", 0, &yReg);
+				tempNum = IN_Star(lineCode, "INY", &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case INZ:
-				tempNum = IN_Star(lineCode, "INZ", 0, &zReg);
+				tempNum = IN_Star(lineCode, "INZ", &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			
 			// Comparison Instructions
 			case CPA:
-				tempNum = CP_Star(lineCode, "CPA", 1, &aReg);
+				tempNum = CP_Star(lineCode, "CPA", &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case CPB:
-				tempNum = CP_Star(lineCode, "CPB", 1, &bReg);
+				tempNum = CP_Star(lineCode, "CPB", &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case CPC:
-				tempNum = CP_Star(lineCode, "CPC", 1, &cReg);
+				tempNum = CP_Star(lineCode, "CPC", &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case CPX:
-				tempNum = CP_Star(lineCode, "CPX", 1, &xReg);
+				tempNum = CP_Star(lineCode, "CPX", &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case CPY:
-				tempNum = CP_Star(lineCode, "CPY", 1, &yReg);
+				tempNum = CP_Star(lineCode, "CPY", &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case CPZ:
-				tempNum = CP_Star(lineCode, "CPZ", 1, &zReg);
+				tempNum = CP_Star(lineCode, "CPZ", &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case GTA:
-				tempNum = GT_Star(lineCode, "GTA", 1, &aReg);
+				tempNum = GT_Star(lineCode, "GTA", &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case GTB:
-				tempNum = GT_Star(lineCode, "GTB", 1, &bReg);
+				tempNum = GT_Star(lineCode, "GTB", &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case GTC:
-				tempNum = GT_Star(lineCode, "GTC", 1, &cReg);
+				tempNum = GT_Star(lineCode, "GTC", &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case GTX:
-				tempNum = GT_Star(lineCode, "GTX", 1, &xReg);
+				tempNum = GT_Star(lineCode, "GTX", &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case GTY:
-				tempNum = GT_Star(lineCode, "GTAY", 1, &yReg);
+				tempNum = GT_Star(lineCode, "GTA", &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case GTZ:
-				tempNum = GT_Star(lineCode, "GTZ", 1, &zReg);
+				tempNum = GT_Star(lineCode, "GTZ", &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LTA:
-				tempNum = LT_Star(lineCode, "LTA", 1, &aReg);
+				tempNum = LT_Star(lineCode, "LTA", &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LTB:
-				tempNum = LT_Star(lineCode, "LTB", 1, &bReg);
+				tempNum = LT_Star(lineCode, "LTB", &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LTC:
-				tempNum = LT_Star(lineCode, "LTC", 1, &cReg);
+				tempNum = LT_Star(lineCode, "LTC", &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LTX:
-				tempNum = LT_Star(lineCode, "LTX", 1, &xReg);
+				tempNum = LT_Star(lineCode, "LTX", &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LTY:
-				tempNum = LT_Star(lineCode, "LTY", 1, &yReg);
+				tempNum = LT_Star(lineCode, "LTY", &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LTZ:
-				tempNum = LT_Star(lineCode, "LTZ", 1, &zReg);
+				tempNum = LT_Star(lineCode, "LTZ", &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			/*
@@ -766,51 +801,51 @@ int main(int argc, char * argv[]) {
 			
 			// Memory Instructions
 			case LDA:
-				tempNum = LD_Star(lineCode, "LDA", 1, &aReg);
+				tempNum = LD_Star(lineCode, "LDA", &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LDB:
-				tempNum = LD_Star(lineCode, "LDB", 1, &bReg);
+				tempNum = LD_Star(lineCode, "LDB", &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LDC:
-				tempNum = LD_Star(lineCode, "LDC", 1, &cReg);
+				tempNum = LD_Star(lineCode, "LDC", &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LDX:
-				tempNum = LD_Star(lineCode, "LDX", 1, &xReg);
+				tempNum = LD_Star(lineCode, "LDX", &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LDY:
-				tempNum = LD_Star(lineCode, "LDY", 1, &yReg);
+				tempNum = LD_Star(lineCode, "LDY", &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case LDZ:
-				tempNum = LD_Star(lineCode, "LDZ", 1, &zReg);
+				tempNum = LD_Star(lineCode, "LDZ", &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STA:
-				tempNum = ST_Star(lineCode, "STA", 1, &aReg);
+				tempNum = ST_Star(lineCode, "STA", &aReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STB:
-				tempNum = ST_Star(lineCode, "STB", 1, &bReg);
+				tempNum = ST_Star(lineCode, "STB", &bReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STC:
-				tempNum = ST_Star(lineCode, "STC", 1, &cReg);
+				tempNum = ST_Star(lineCode, "STC", &cReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STX:
-				tempNum = ST_Star(lineCode, "STX", 1, &xReg);
+				tempNum = ST_Star(lineCode, "STX", &xReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STY:
-				tempNum = ST_Star(lineCode, "STY", 1, &yReg);
+				tempNum = ST_Star(lineCode, "STY", &yReg);
 				if (tempNum == -1) {return -1;}
 				break;
 			case STZ:
-				tempNum = ST_Star(lineCode, "STZ", 1, &zReg);
+				tempNum = ST_Star(lineCode, "STZ", &zReg);
 				if (tempNum == -1) {return -1;}
 				break;
 				
@@ -824,7 +859,7 @@ int main(int argc, char * argv[]) {
 			*/
 			case INP:
 				if (lineCode.size() != 2) {
-					std::cout << "INP got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+					ERR(incorrectArgCount, "INP", 1, lineCode.size());
 					return -1;
 				} else {
 					// Take the input, it will only allow integer numbers, so no decimals or strings...
@@ -832,15 +867,24 @@ int main(int argc, char * argv[]) {
 					memory[stoi(lineCode[1], nullptr, 0)] = tempNum;
 				}
 				break;
+				
 			case OUT:
 				if (lineCode.size() != 2) {
-					std::cout << "OUT got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+					ERR(incorrectArgCount, "OUT", 1, lineCode.size());
 					return -1;
 				} else {
-					// We are assuming the programmer knows to use numbers, so we are not checking it first
-					// Don't mess it up
-					std::cout << memory[stoi(lineCode[1], nullptr, 0)] << "\n";
+					// Check first to see if the number being printed exists in PrintDirectiveValues
+					for (auto& elem : PrintDirectiveValues) {
+						if (elem.first == memory[stoi(lineCode[1], nullptr, 0)]) {
+							foundPrintDirective = true;
+							std::cout << elem.second << "\n";
+							break;
+						}
+					} if (!foundPrintDirective) {
+						std::cout << memory[stoi(lineCode[1], nullptr, 0)] << "\n";
+					}
 				}
+				foundPrintDirective = false;
 				break;
 			
 			// Control Flow Instructions
@@ -853,7 +897,7 @@ int main(int argc, char * argv[]) {
 			*/
 			case JMP:
 				if (lineCode.size() != 2) {
-					std::cout << "JMP got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+					ERR(incorrectArgCount, "JMP", 1, lineCode.size());
 					return -1;
 				} else {
 					i = (Labels[lineCode[1]]-1);
@@ -867,7 +911,7 @@ int main(int argc, char * argv[]) {
 			*/
 			case BEQ:
 				if (lineCode.size() != 2) {
-					std::cout << "BEQ got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+					ERR(incorrectArgCount, "BEQ", 1, lineCode.size());
 					return -1;
 				} else {
 					if (CHK) {i=Labels[lineCode[1]]-1;}
@@ -880,14 +924,28 @@ int main(int argc, char * argv[]) {
 			*/
 			case BNE:
 				if (lineCode.size() != 2) {
-					std::cout << "BNE got " << lineCode.size() - 1 << " arguments, and expected 1.\n";
+					ERR(incorrectArgCount, "BNE", 1, lineCode.size());
 					return -1;
 				} else {
 					if (!CHK) {i=Labels[lineCode[1]]-1;}
 				}
 				break;
 		
+			/*
+				Pre-Processor Directives
+				!print changes how print is used
+			*/
+			
+			case PRINT:
+				if (lineCode.size() < 3) {
+					ERR(incorrectArgCount, "!print", 2, 1, "!print expects a number then a string, these were not given");
+				} else {
+					PrintDirectiveValues[stoi(lineCode[1], nullptr, 0)] = split(fileVector[i], "\"")[1];
+				}
+				break;
 			}
+			
+			
 			if (debugMode) {
 				std::cout << lineCode[0] << "\n";
 				std::cout << "A: " << aReg << "\n";
@@ -914,6 +972,13 @@ int main(int argc, char * argv[]) {
 	std::cout << "Z: " << zReg << "\n";
 	std::cout << "CHK: " << CHK << "\n";
 	
-	
+	if (debugMode) {
+		// Function stolen from https://stackoverflow.com/a/14070977
+		for(const auto& elem : PrintDirectiveValues)
+		{
+			std::cout << elem.first << " " << elem.second << "\n";
+		}
+		
+	}	
 	return 0;
 }

@@ -1,23 +1,6 @@
-# This is the guessingGame.thl, optimized to be as little lines as I could make it in about 5 minutes
-# Feel free to try to optimize it more... this won't stay long
-
-LDA 64
-LDC 444
-LDX 111
-LDY 69420
-STY 0x22
-LBL GameLoop
-INP 0x01
-LDB 0x01
-GTB A
-IFT
-STC 0x20
-LTB A
-IFT
-STX 0x20
-CPB A
-BEQ End
-OUT 0x20
-JMP GameLoop
-LBL End
-OUT 0x22
+!print 444 "Go Up!"
+LDA 444
+STA 0x01
+OUT 0x01
+!print 444 "'Testing'"
+OUT 0x01
