@@ -941,20 +941,20 @@ int main(int argc, char * argv[]) {
 			case PRINT:
 				if (lineCode.size() < 3) {
 					ERR(incorrectArgCount, "!print", 2, 1, "!print expects a number then a string, these were not given");
+					return -1;
 				} else {
 					PrintDirectiveValues[stoi(lineCode[1], nullptr, 0)] = split(fileVector[i], "\"")[1];
-					return -1;
 				}
 				break;
 				
-				case INPUT:
-					if (lineCode.size() < 2) {
-						ERR(incorrectArgCount, "!input", 2, 1);
-						return -1;
-					} else {
-						currentInpString = split(fileVector[i], "\"")[1];
-					}
-					break;
+			case INPUT:
+				if (lineCode.size() < 2) {
+					ERR(incorrectArgCount, "!input", 2, 1);
+					return -1;
+				} else {
+					currentInpString = split(fileVector[i], "\"")[1];
+				}
+				break;
 			}
 			
 			

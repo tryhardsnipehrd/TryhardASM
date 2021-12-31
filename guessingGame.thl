@@ -1,8 +1,11 @@
 # Let's make a simple guessing game!
 
+# All of our directives here
+
 !print 444 "Go Up!"
 !print 111 "Go Down!"
 !print 69420 "You Guessed it!"
+!input "Enter Your Guess: "
 
 
 LBL Setup
