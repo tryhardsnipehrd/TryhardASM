@@ -1,7 +1,3 @@
-!print 23 "test"
-!input "Enter: "
-INP 0x01
-OUT 0x01
-!input "Number: "
-INP 0x01
-OUT 0x01
+# Test program
+
+LBL Setup
