@@ -1,15 +1,15 @@
-CC = g++
-CFLAGS = 
+CXX = g++
+CXXFLAGS = 
+RM = rm
 
-thl: instructions.o interpreter.o
+thl: interpreter.o instructions.o
 	@echo Compiling THL.exe 
 	@echo This is required
-	$(CC) $(CFLAGS)  -o THL instructions.o interpreter.o
+	$(CXX) -o thl $^
 
-instructions.o: instructions.cpp include/instructions.h
-	@echo Compiling instructions.cpp into a .o file
-	$(CC) $(CFLAGS) -c instructions.cpp
+%.o: %.cpp
+	@echo Compiling $< into a .o file
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
-interpreter.o: interpreter.cpp include/instructions.h
-	@echo Compiling interpreter.cpp into a .o file
-	$(CC) $(CFLAGS) -c interpreter.cpp
+clean:
+	$(RM) -f *.o thl
