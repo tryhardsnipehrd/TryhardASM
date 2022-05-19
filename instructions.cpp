@@ -10,7 +10,7 @@ registers parseRegisters(std::string const& letter) {
 	if (letter == "Y") return Y;
 	if (letter == "Z") return Z;
 	return NotARegister;
-};
+}
 
 instructions parseInstruction(std::string const& instruction) {
 
@@ -85,4 +85,4 @@ instructions parseInstruction(std::string const& instruction) {
 	if (instruction == "!input") return INPUT;
 
 	return InvalidIns;
-};
+}
